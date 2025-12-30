@@ -2,32 +2,14 @@ FROM php:8.2-apache
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    zip \
-    unzip \
-    git \
-    curl \
-    libcurl4-openssl-dev \
-    pkg-config \
-    libssl-dev \
-    libzip-dev \
-    libicu-dev \
-    libpq-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    libmcrypt-dev \
-    libreadline-dev \
-    libxslt1-dev \
-    libmagickwand-dev \
-    libmagickcore-dev \
-    libmagick++-dev \
+    libpng-dev libonig-dev libxml2-dev zip unzip git curl \
+    libcurl4-openssl-dev pkg-config libssl-dev libzip-dev libicu-dev \
+    libpq-dev libjpeg-dev libfreetype6-dev libxslt1-dev \
     && docker-php-ext-install pdo mbstring zip exif pcntl bcmath gd
 
 # Install MongoDB PHP extension
 RUN pecl install mongodb \
-    && docker-php-ext-enable mongodb
+    && echo "extension=mongodb.so" > /usr/local/etc/php/conf.d/mongodb.ini
 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
@@ -40,6 +22,9 @@ COPY . .
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Install PHP dependencies
+RUN composer install --no-dev --optimize-autoloader
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
