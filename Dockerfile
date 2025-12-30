@@ -23,7 +23,6 @@ RUN apt-get update && apt-get install -y \
     libmagickwand-dev \
     libmagickcore-dev \
     libmagick++-dev \
-    libmongodb-dev \
     && docker-php-ext-install pdo mbstring zip exif pcntl bcmath gd
 
 # Install MongoDB PHP extension
