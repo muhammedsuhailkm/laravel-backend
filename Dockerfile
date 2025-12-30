@@ -14,10 +14,9 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libzip-dev \
     libssl-dev \
-    && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions required by Laravel
+# Install PHP extensions
 RUN docker-php-ext-install \
     pdo_mysql \
     mbstring \
@@ -25,46 +24,38 @@ RUN docker-php-ext-install \
     pcntl \
     bcmath \
     gd \
-    tokenizer \
-    ctype \
-    zip \
-    curl \
-    opcache
+    zip
 
 # Install MongoDB PHP extension
-RUN pecl install mongodb \
- && docker-php-ext-enable mongodb
+RUN pecl install mongodb && docker-php-ext-enable mongodb
 
-# Enable Apache rewrite module
+# Enable Apache modules
 RUN a2enmod rewrite
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy application source
+# Copy application code
 COPY . .
 
-# Fix permissions (CRITICAL)
-RUN chown -R www-data:www-data /var/www/html \
- && chmod -R 755 /var/www/html/storage \
- && chmod -R 755 /var/www/html/bootstrap/cache
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html && \
+    chmod -R 755 /var/www/html/storage && \
+    chmod -R 755 /var/www/html/bootstrap/cache
 
-# Apache must serve Laravel public folder (CRITICAL)
+# Configure Apache for Laravel public folder
 RUN sed -i 's|/var/www/html|/var/www/html/public|g' \
     /etc/apache2/sites-available/000-default.conf
 
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-mongodb --no-scripts
 
-# Install Node.js dependencies and build frontend assets
+# Install Node.js and build assets
+RUN apt-get update && apt-get install -y nodejs npm && apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN npm install && npm run build
 
-# Configure Apache to respect PORT environment variable
-RUN sed -i 's/80/${PORT:-80}/g' /etc/apache2/ports.conf && \
-    sed -i 's/:80/:${PORT:-80}/g' /etc/apache2/sites-available/000-default.conf
+# Expose port (Render will set PORT env variable)
+EXPOSE 8000
 
-# Expose Apache port
-EXPOSE 80
-
-# Start Apache with PORT environment variable support
-CMD ["sh", "-c", "sed -i \"s/Listen 80/Listen $PORT/g\" /etc/apache2/ports.conf && apache2-foreground"]
+# Start Apache
+CMD ["apache2-foreground"]
