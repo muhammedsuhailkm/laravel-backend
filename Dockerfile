@@ -24,7 +24,12 @@ RUN docker-php-ext-install \
     exif \
     pcntl \
     bcmath \
-    gd
+    gd \
+    tokenizer \
+    ctype \
+    zip \
+    curl \
+    opcache
 
 # Install MongoDB PHP extension
 RUN pecl install mongodb \
@@ -49,10 +54,10 @@ RUN sed -i 's|/var/www/html|/var/www/html/public|g' \
     /etc/apache2/sites-available/000-default.conf
 
 # Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-mongodb --no-scripts
 
-# Build frontend assets ONLY if needed
-# RUN npm install && npm run build
+# Install Node.js dependencies and build frontend assets
+RUN npm install && npm run build
 
 # Expose Apache port
 EXPOSE 80
