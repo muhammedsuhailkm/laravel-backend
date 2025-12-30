@@ -39,7 +39,7 @@ RUN docker-php-ext-install \
 # ================================
 # Install MongoDB PHP extension
 # ================================
-RUN pecl install mongodb \
+RUN pecl install mongodb-1.21.2 \
  && docker-php-ext-enable mongodb
 
 # ================================
