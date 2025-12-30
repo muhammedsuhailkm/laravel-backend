@@ -1,37 +1,53 @@
 FROM php:8.2-apache
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    libpng-dev libonig-dev libxml2-dev zip unzip git curl \
-    libcurl4-openssl-dev pkg-config libssl-dev libzip-dev libicu-dev \
-    libpq-dev libjpeg-dev libfreetype6-dev libxslt1-dev \
-    && docker-php-ext-install pdo mbstring zip exif pcntl bcmath gd
-
-# Install MongoDB PHP extension
-RUN pecl install mongodb \
-    && echo "extension=mongodb.so" > /usr/local/etc/php/conf.d/mongodb.ini
-
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
-
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy project files
-COPY . .
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    unzip \
+    libzip-dev \
+    nodejs \
+    npm \
+    libssl-dev
 
-# Install Composer
+# Clear cache
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install PHP extensions
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+
+# Install MongoDB PHP extension (latest version)
+RUN pecl install mongodb && docker-php-ext-enable mongodb
+
+# Enable Apache modules
+RUN a2enmod rewrite
+
+# Install composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader
+# Copy application code
+COPY . .
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html
+# Set proper permissions and configure git
+RUN chown -R www-data:www-data storage bootstrap/cache && \
+    chmod -R g+w storage bootstrap/cache && \
+    git config --global --add safe.directory /var/www/html
+
+# Install PHP dependencies (skip scripts to avoid conflicts)
+RUN composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-mongodb --no-scripts
+
+# Install Node.js dependencies
+RUN npm install
 
 # Expose port
 EXPOSE 80
 
-# Start Laravel
-CMD php artisan serve --host=0.0.0.0 --port=80
+# Start Apache
+CMD ["apache2-foreground"]
