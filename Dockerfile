@@ -13,40 +13,48 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     libzip-dev \
-    nodejs \
-    npm \
-    libssl-dev
+    libssl-dev \
+    && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
-# Clear cache
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+# Install PHP extensions required by Laravel
+RUN docker-php-ext-install \
+    pdo_mysql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    gd
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+# Install MongoDB PHP extension
+RUN pecl install mongodb \
+ && docker-php-ext-enable mongodb
 
-# Install MongoDB PHP extension (latest version)
-RUN pecl install mongodb && docker-php-ext-enable mongodb
-
-# Enable Apache modules
+# Enable Apache rewrite module
 RUN a2enmod rewrite
 
-# Install composer
+# Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy application code
+# Copy application source
 COPY . .
 
-# Set proper permissions and configure git
-RUN chown -R www-data:www-data storage bootstrap/cache && \
-    chmod -R g+w storage bootstrap/cache && \
-    git config --global --add safe.directory /var/www/html
+# Fix permissions (CRITICAL)
+RUN chown -R www-data:www-data /var/www/html \
+ && chmod -R 755 /var/www/html/storage \
+ && chmod -R 755 /var/www/html/bootstrap/cache
 
-# Install PHP dependencies (skip scripts to avoid conflicts)
-RUN composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-mongodb --no-scripts
+# Apache must serve Laravel public folder (CRITICAL)
+RUN sed -i 's|/var/www/html|/var/www/html/public|g' \
+    /etc/apache2/sites-available/000-default.conf
 
-# Install Node.js dependencies
-RUN npm install
+# Install PHP dependencies
+RUN composer install --no-dev --optimize-autoloader
 
-# Expose port
+# Build frontend assets ONLY if needed
+# RUN npm install && npm run build
+
+# Expose Apache port
 EXPOSE 80
 
 # Start Apache
