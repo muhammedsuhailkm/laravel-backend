@@ -59,8 +59,12 @@ RUN composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-mo
 # Install Node.js dependencies and build frontend assets
 RUN npm install && npm run build
 
+# Configure Apache to respect PORT environment variable
+RUN sed -i 's/80/${PORT:-80}/g' /etc/apache2/ports.conf && \
+    sed -i 's/:80/:${PORT:-80}/g' /etc/apache2/sites-available/000-default.conf
+
 # Expose Apache port
 EXPOSE 80
 
-# Start Apache
-CMD ["apache2-foreground"]
+# Start Apache with PORT environment variable support
+CMD ["sh", "-c", "sed -i \"s/Listen 80/Listen $PORT/g\" /etc/apache2/ports.conf && apache2-foreground"]
