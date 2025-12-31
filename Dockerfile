@@ -19,23 +19,17 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 
-# Install MongoDB PHP extension
-RUN pecl install mongodb && docker-php-ext-enable mongodb
-
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy composer files first for better layer caching
-COPY composer.json composer.lock ./
+# Install MongoDB PHP extension
+RUN pecl install mongodb && docker-php-ext-enable mongodb
 
-# Install PHP dependencies (without dev dependencies for production)
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
-
-# Copy the rest of the application
+# Copy the entire application
 COPY . .
 
-# Complete the composer install with scripts and autoloader
-RUN composer dump-autoload --optimize --classmap-authoritative
+# Install PHP dependencies (without dev dependencies for production)
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
 # Set proper ownership
 RUN chown -R www-data:www-data /var/www/html
