@@ -1,33 +1,21 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use MongoDB\Client;
-use MongoDB\BSON\Regex;
+use Illuminate\Support\Facades\DB;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
+
 Route::get('/blog/{heading}', function ($heading) {
 
     $heading = trim(urldecode($heading));
 
-    $client = new Client(env('MONGODB_URI'));
-
-    $blog = $client
-        ->selectDatabase('blog')
-        ->selectCollection('blogs')
-        ->findOne(
-            [
-                'heading' => new Regex('^' . preg_quote($heading) . '$', 'i')
-            ],
-            [
-                'projection' => [
-                    '_id' => 0,
-                    'content' => 1
-                ]
-            ]
-        );
+    $blog = DB::table('blogs')
+        ->select('content')
+        ->whereRaw('LOWER(heading) = ?', [strtolower($heading)])
+        ->first();
 
     if (!$blog) {
         return response()->json([
@@ -37,32 +25,25 @@ Route::get('/blog/{heading}', function ($heading) {
 
     return response()->json($blog);
 })
-->where('heading', '.*'); 
+->where('heading', '.*');
+
+
 
 Route::get('/updated-blog/{heading}', function ($heading) {
 
     $heading = trim(urldecode($heading));
 
-    $client = new Client(env('MONGODB_URI'));
-
-    $blog = $client
-        ->selectDatabase('blog')
-        ->selectCollection('updatedblogs')
-        ->findOne(
-            [
-                'heading' => new Regex('^' . preg_quote($heading) . '$', 'i')
-            ],
-            [
-                'projection' => [
-                    '_id' => 0,
-                    'content' => 1
-                ]
-            ]
-        );
+    $blog = DB::table('updatedblogs')
+        ->select('content')
+        ->whereRaw('LOWER(heading) = ?', [strtolower($heading)])
+        ->first();
 
     if (!$blog) {
-        return response()->json(['message' => 'Updated blog not found'], 404);
+        return response()->json([
+            'message' => 'Updated blog not found'
+        ], 404);
     }
 
     return response()->json($blog);
-})->where('heading', '.*');
+})
+->where('heading', '.*');
